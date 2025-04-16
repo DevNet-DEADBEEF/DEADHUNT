@@ -1,8 +1,9 @@
 import java.util.Random;
 
 public class HiddenClass {
-    private final long before = System.nanoTime();
     private final DebugRand rand = new DebugRand();
+    private final long before = System.nanoTime();
+    private final Random randGen = new Random();
     private final long after = System.nanoTime();
     private final long secretKey;
     private final int secret2;
@@ -12,16 +13,19 @@ public class HiddenClass {
         secretKey = rand.nextLong();
         System.out.println("[HiddenClass] Shuffling...");
         shuffleRand();
+        ReplicatedRandom rr = new ReplicatedRandom();
+        rr.replicateState(randGen.nextLong());
+        long randSeed = rr.initSeed;
 
         System.out.println("Key1: " + secretKey);
         System.out.println("Key2: " + secret2);
         System.out.println("Before: " + before);
-        System.out.println("During: " + rand.getInitialSeed());
-        System.out.println("After: " + after);
+        System.out.println("During: " + randSeed);
+        System.out.println("After:  " + after);
         System.out.printf(
                 "Diff: ->R: %s, R->: %s\n",
-                rand.getInitialSeed() - before,
-                after - rand.getInitialSeed()
+                randSeed - before,
+                after - randSeed
         );
 
         long guess =
@@ -34,7 +38,7 @@ public class HiddenClass {
                 rand.getInitialSeed() ^ (8682522807148012L * 1181783497276652981L),
                 guess
         );
-        System.out.println("Guess: " + guess + " = " + rand.checkSeed(guess, secret2));
+        System.out.println("Guess: " + guess + " = " + rand.checkSeed(guess, 20, secret2));
     }
 
     private void shuffleRand() {

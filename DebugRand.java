@@ -18,22 +18,11 @@ public class DebugRand implements RandomGenerator, java.io.Serializable {
         long qualifier = seedUniquifier();
         System.out.println("[DebugRand] Initial time: " + time);
         System.out.printf(
-                "[DebugRand...] %s -> %s -> %s\n",
-                time, time ^ qualifier, (time ^ qualifier) ^ multiplier
+                "[DebugRand...] %s ^ %s -> %s -> %s\n",
+                time, qualifier, time ^ qualifier, (time ^ qualifier) ^ multiplier
         );
         time = qualifier ^ time;
         seed = new AtomicLong(time);
-    }
-
-    public DebugRand(long seed) {
-        this.initialSeed = seed;
-        if (getClass() == DebugRand.class)
-            this.seed = new AtomicLong(initialScramble(seed));
-        else {
-            // subclass might have overridden setSeed
-            this.seed = new AtomicLong();
-            setSeed(seed);
-        }
     }
 
     private static long initialScramble(long seed) {
@@ -105,7 +94,7 @@ public class DebugRand implements RandomGenerator, java.io.Serializable {
                     r, (int) ((bound * (long) r) >> 31)
             );
             r = (int) ((bound * (long) r) >> 31);
-        } else { // reject over-represented candidates
+        } else {
             System.out.printf(
                     "[nextInt(%s)] %s %% %s = %s\n",
                     bound, r, bound, r % bound
@@ -116,6 +105,7 @@ public class DebugRand implements RandomGenerator, java.io.Serializable {
                     r, r, bound, m, (r - (r % bound) + m < 0)
             );
             long c = 0;
+            // reject over-represented candidates
             for (
                     int u = r;
                     u - (r = u % bound) + m < 0;
@@ -152,15 +142,16 @@ public class DebugRand implements RandomGenerator, java.io.Serializable {
      * Checks to see if the provided seed will produce the following bits
      *
      * @param seed Initial seed (System.nanoTime())
-     * @param bits First n bits produced
+     * @param bound Upper bound for generation
+     * @param first First n bits produced
      * @return `seed.next(len(bits)) == bits`
      */
-    public boolean checkSeed(long seed, int bits) {
+    public boolean checkSeed(long seed, int bound, int first) {
         long unseed = this.seed.get();
         DebugRand tmp = new DebugRand();
         tmp.setSeedUnscrambled(seed);
-        int actual = tmp.nextInt(20);
+        int actual = tmp.nextInt(bound);
         this.seed.set(unseed);
-        return actual == bits;
+        return actual == first;
     }
 }
