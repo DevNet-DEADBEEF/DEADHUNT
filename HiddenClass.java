@@ -8,8 +8,8 @@ public class HiddenClass {
     private final int secret2;
 
     public HiddenClass() {
-        secretKey = rand.nextLong();
         secret2 = rand.nextInt(20);
+        secretKey = rand.nextLong();
         System.out.println("[HiddenClass] Shuffling...");
         shuffleRand();
 
@@ -19,10 +19,22 @@ public class HiddenClass {
         System.out.println("During: " + rand.getInitialSeed());
         System.out.println("After: " + after);
         System.out.printf(
-                "Diff: ->R: %s, R->: %s",
+                "Diff: ->R: %s, R->: %s\n",
                 rand.getInitialSeed() - before,
                 after - rand.getInitialSeed()
         );
+
+        long guess =
+                rand.getInitialSeed()
+                        ^ (8682522807148012L * 1181783497276652981L)
+                        ^ 0x5DEECE66DL;
+        System.out.printf(
+                "Guess transforms: %s -> %s -> %s\n",
+                rand.getInitialSeed(),
+                rand.getInitialSeed() ^ (8682522807148012L * 1181783497276652981L),
+                guess
+        );
+        System.out.println("Guess: " + guess + " = " + rand.checkSeed(guess, secret2));
     }
 
     private void shuffleRand() {

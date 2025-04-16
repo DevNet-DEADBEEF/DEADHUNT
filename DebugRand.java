@@ -1,7 +1,11 @@
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.random.RandomGenerator;
 
-public class DebugRand extends Random {
+public class DebugRand implements RandomGenerator, java.io.Serializable {
+
+    @java.io.Serial
+    private static final long serialVersionUID = 3905348978240129619L;
+
     private final AtomicLong seed;
     private static final long multiplier = 0x5DEECE66DL;
     private static final long addend = 0xBL;
@@ -11,14 +15,47 @@ public class DebugRand extends Random {
     public DebugRand() {
         long time = System.nanoTime();
         initialSeed = time;
+        long qualifier = seedUniquifier();
         System.out.println("[DebugRand] Initial time: " + time);
-        time ^= seedUniquifier();
-        super(time ^ multiplier);
+        System.out.printf(
+                "[DebugRand...] %s -> %s -> %s\n",
+                time, time ^ qualifier, (time ^ qualifier) ^ multiplier
+        );
+        time = qualifier ^ time;
         seed = new AtomicLong(time);
     }
 
+    public DebugRand(long seed) {
+        this.initialSeed = seed;
+        if (getClass() == DebugRand.class)
+            this.seed = new AtomicLong(initialScramble(seed));
+        else {
+            // subclass might have overridden setSeed
+            this.seed = new AtomicLong();
+            setSeed(seed);
+        }
+    }
+
+    private static long initialScramble(long seed) {
+        return (seed ^ multiplier) & mask;
+    }
+
     public synchronized void setSeedUnscrambled(long seed) {
-        super.setSeed(seed ^ multiplier);
+        System.out.println("[setSeedUnscrambled] seed=" + seed);
+        this.setSeed(seed ^ multiplier);
+    }
+
+    public synchronized void setSeed(long seed) {
+        this.setSeed(seed, false);
+    }
+
+    public synchronized void setSeed(long seed, boolean scramble) {
+        System.out.println("[setSeed] seed=" + seed);
+        if (scramble) {
+            System.out.println("[setSeed...] seed->" + initialScramble(seed));
+            this.seed.set(initialScramble(seed));
+        } else
+            this.seed.set(seed);
     }
 
     private static long seedUniquifier() {
@@ -38,7 +75,6 @@ public class DebugRand extends Random {
     private static final AtomicLong seedUniquifier
             = new AtomicLong(8682522807148012L);
 
-    @Override
     protected int next(int bits) {
         long oldseed, nextseed;
         AtomicLong seed = this.seed;
@@ -59,7 +95,7 @@ public class DebugRand extends Random {
     public int nextInt(int bound) {
         if (bound <= 0)
             throw new IllegalArgumentException("bound must be positive");
-        int r = next(31);
+        int r = this.next(31);
         int m = bound - 1;
         if ((bound & m) == 0)  // i.e., bound is a power of 2
         {
@@ -83,9 +119,10 @@ public class DebugRand extends Random {
             for (
                     int u = r;
                     u - (r = u % bound) + m < 0;
-                    u = next(31)
+                    u = this.next(31)
             )
                 c++;
+
             System.out.printf(
                     "[nextInt(%s)...] c=%s, r=%s\n",
                     bound, c, r
@@ -97,8 +134,8 @@ public class DebugRand extends Random {
     @Override
     public long nextLong() {
         // it's okay that the bottom word remains signed.
-        int r1 = next(32);
-        int r2 = next(32);
+        int r1 = this.next(32);
+        int r2 = this.next(32);
 
         System.out.printf(
                 "[nextLong] (%s << 32) + %s = %s\n",
@@ -109,5 +146,21 @@ public class DebugRand extends Random {
 
     public long getInitialSeed() {
         return initialSeed;
+    }
+
+    /**
+     * Checks to see if the provided seed will produce the following bits
+     *
+     * @param seed Initial seed (System.nanoTime())
+     * @param bits First n bits produced
+     * @return `seed.next(len(bits)) == bits`
+     */
+    public boolean checkSeed(long seed, int bits) {
+        long unseed = this.seed.get();
+        DebugRand tmp = new DebugRand();
+        tmp.setSeedUnscrambled(seed);
+        int actual = tmp.nextInt(20);
+        this.seed.set(unseed);
+        return actual == bits;
     }
 }
