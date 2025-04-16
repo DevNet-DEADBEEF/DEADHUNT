@@ -1,14 +1,7 @@
-import org.apache.commons.lang3.reflect.FieldUtils;
+public static void main(String[] args) {
+    long startTime = System.nanoTime();
+    HiddenClass hc = new HiddenClass();
+    System.out.println("- Before: " + startTime);
 
-public class Playground {
-    public static void main(String[] args) {
-        HiddenClass hc = new HiddenClass();
-        long key = -1;
-        try {
-            key = (long) FieldUtils.readField(hc, "secretKey", true);
-        } catch (IllegalAccessException e) {
-            System.err.println(e.getMessage());
-        }
-        System.out.println(hc.guessSecretKey(key));
-    }
+    System.out.println(hc.guessSecretKey(-1));
 }
