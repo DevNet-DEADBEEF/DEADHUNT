@@ -1,6 +1,6 @@
 import java.util.Random;
 
-public class TreasureHunt {
+public class DeadHunt {
 
     // ---------------------------
     // Inner class: Coordinate
@@ -114,18 +114,20 @@ public class TreasureHunt {
     // ---------------------------
 
     public final int edgeLength = 20;
-    private final Collectible[][][] matrix;
-    private final Coordinate[] hintCoords;
+    private Collectible[][][] matrix;
+    private Coordinate[] hintCoords;
     private final Coordinate goalCoord;
     private final Coordinate currentCoord;
-    private static final Random rand = new Random();
+    public static final Random rand = new Random(
+            StudentAgent.seed.get() ^ (8682522807148012L * 1181783497276652981L)
+    );
     private int steps = 0;
 
     // ---------------------------
     // Constructor
     // ---------------------------
 
-    public TreasureHunt() {
+    public DeadHunt() {
         this.matrix = new Collectible[edgeLength][edgeLength][edgeLength];
         this.hintCoords = new Coordinate[9];
         this.currentCoord = new Coordinate(0, 0, 0);
@@ -133,6 +135,10 @@ public class TreasureHunt {
         this.goalCoord = createRandomCoord(true);
         setHintCoords();
         populateMatrix();
+    }
+
+    public Coordinate getGoalCoord() {
+        return this.goalCoord;
     }
 
     // ---------------------------

@@ -11,18 +11,24 @@ public class DebugRand implements RandomGenerator, java.io.Serializable {
     private static final long addend = 0xBL;
     private static final long mask = (1L << 48) - 1;
     private final long initialSeed;
+    private static boolean quiet = false;
 
     public DebugRand() {
+        this(false);
+    }
+
+    public DebugRand(boolean logs) {
         long time = System.nanoTime();
         initialSeed = time;
         long qualifier = seedUniquifier();
         System.out.println("[DebugRand] Initial time: " + time);
         System.out.printf(
                 "[DebugRand...] %s ^ %s -> %s -> %s\n",
-                time, qualifier, time ^ qualifier, (time ^ qualifier) ^ multiplier
+                time, qualifier, time ^ qualifier, initialScramble(time ^ qualifier)
         );
         time = qualifier ^ time;
-        seed = new AtomicLong(time);
+        seed = new AtomicLong(initialScramble(time));
+        quiet = logs;
     }
 
     private static long initialScramble(long seed) {
@@ -30,18 +36,21 @@ public class DebugRand implements RandomGenerator, java.io.Serializable {
     }
 
     public synchronized void setSeedUnscrambled(long seed) {
-        System.out.println("[setSeedUnscrambled] seed=" + seed);
-        this.setSeed(seed ^ multiplier);
-    }
-
-    public synchronized void setSeed(long seed) {
+        if (!quiet)
+            System.out.println("[setSeedUnscrambled] seed=" + seed);
         this.setSeed(seed, false);
     }
 
+    public synchronized void setSeed(long seed) {
+        this.setSeed(seed, true);
+    }
+
     public synchronized void setSeed(long seed, boolean scramble) {
-        System.out.println("[setSeed] seed=" + seed);
+        if (!quiet)
+            System.out.println("[setSeed] seed=" + seed);
         if (scramble) {
-            System.out.println("[setSeed...] seed->" + initialScramble(seed));
+            if (!quiet)
+                System.out.println("[setSeed...] seed->" + initialScramble(seed));
             this.seed.set(initialScramble(seed));
         } else
             this.seed.set(seed);
@@ -55,7 +64,8 @@ public class DebugRand implements RandomGenerator, java.io.Serializable {
             long current = seedUniquifier.get();
             long next = current * 1181783497276652981L;
             if (seedUniquifier.compareAndSet(current, next)) {
-                System.out.println("[seedUniquifier] " + old + " -> " + next);
+                if (!quiet)
+                    System.out.println("[seedUniquifier] " + old + " -> " + next);
                 return next;
             }
         }
@@ -76,7 +86,8 @@ public class DebugRand implements RandomGenerator, java.io.Serializable {
             nextseed = (oldseed * multiplier + addend) & mask;
         } while (!seed.compareAndSet(oldseed, nextseed));
 
-        System.out.println("[next(" + bits + ")] " + old + " -> " + nextseed);
+        if (!quiet)
+            System.out.println("[next(" + bits + ")] " + old + " -> " + nextseed);
         return (int) (nextseed >>> (48 - bits));
     }
 
@@ -88,18 +99,21 @@ public class DebugRand implements RandomGenerator, java.io.Serializable {
         int m = bound - 1;
         if ((bound & m) == 0)  // i.e., bound is a power of 2
         {
-            System.out.printf(
+            if (!quiet)
+                System.out.printf(
                     "[nextInt(%s)] (%s * %s) >> 31 = %s\n",
                     bound, bound,
                     r, (int) ((bound * (long) r) >> 31)
             );
             r = (int) ((bound * (long) r) >> 31);
         } else {
-            System.out.printf(
+            if (!quiet)
+                System.out.printf(
                     "[nextInt(%s)] %s %% %s = %s\n",
                     bound, r, bound, r % bound
             );
-            System.out.printf(
+            if (!quiet)
+                System.out.printf(
                     "[nextInt(%s)...] %s - (%s %% %s) + %s < 0 = %s\n",
                     bound,
                     r, r, bound, m, (r - (r % bound) + m < 0)
@@ -113,7 +127,8 @@ public class DebugRand implements RandomGenerator, java.io.Serializable {
             )
                 c++;
 
-            System.out.printf(
+            if (!quiet)
+                System.out.printf(
                     "[nextInt(%s)...] c=%s, r=%s\n",
                     bound, c, r
             );
@@ -127,7 +142,8 @@ public class DebugRand implements RandomGenerator, java.io.Serializable {
         int r1 = this.next(32);
         int r2 = this.next(32);
 
-        System.out.printf(
+        if (!quiet)
+            System.out.printf(
                 "[nextLong] (%s << 32) + %s = %s\n",
                 r1, r2, ((long) (r1) << 32) + r2
         );

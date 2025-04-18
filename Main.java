@@ -1,7 +1,7 @@
 public class Main {
 
     public static void main(String[] args) {
-        int trials = 1;
+        int trials = Integer.parseInt(args[0]);
         int totalSteps = 0;
         int successCount = 0;
 
