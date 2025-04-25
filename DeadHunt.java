@@ -1,3 +1,4 @@
+import java.util.Arrays;
 import java.util.Random;
 
 public class DeadHunt {
@@ -107,6 +108,10 @@ public class DeadHunt {
         public boolean isHint() {
             return this.isHint;
         }
+
+        public String toString() {
+            return "Collectible(" + ((Object[]) this.message)[0] + ", " + Arrays.toString((int[]) ((Object[]) this.message)[1]) + ")";
+        }
     }
 
     // ---------------------------
@@ -114,22 +119,26 @@ public class DeadHunt {
     // ---------------------------
 
     public final int edgeLength = 20;
-    private Collectible[][][] matrix;
-    private Coordinate[] hintCoords;
+    private final Collectible[][][] matrix;
+    public Coordinate[] hintCoords;
     private final Coordinate goalCoord;
     private final Coordinate currentCoord;
-    public static final Random rand = new Random(
-            StudentAgent.seed.get() ^ (8682522807148012L * 1181783497276652981L)
-    );
+    public static final Random rand = new Random();
     private int steps = 0;
+    private final int nHints;
 
     // ---------------------------
     // Constructor
     // ---------------------------
 
     public DeadHunt() {
+        this(9);
+    }
+
+    public DeadHunt(int nHints) {
         this.matrix = new Collectible[edgeLength][edgeLength][edgeLength];
-        this.hintCoords = new Coordinate[9];
+        this.nHints = nHints;
+        this.hintCoords = new Coordinate[this.nHints];
         this.currentCoord = new Coordinate(0, 0, 0);
 
         this.goalCoord = createRandomCoord(true);
@@ -198,7 +207,7 @@ public class DeadHunt {
 
     private void setHintCoords() {
         int count = 0;
-        while (count < 9) {
+        while (count < this.nHints) {
             Coordinate newCoord = createRandomCoord(true);
             boolean duplicate = false;
             for (int i = 0; i < count; i++) {
@@ -232,10 +241,9 @@ public class DeadHunt {
             int distToPrev = current.manhattanTo(prev);
             int distToGoal = current.manhattanTo(goalCoord);
 
-            int span = RANGE_SIZE;
-            int halfSpan = rand.nextInt(span + 1);
+            int halfSpan = rand.nextInt(RANGE_SIZE + 1);
             int low = Math.max(0, distToGoal - halfSpan);
-            int high = Math.min(edgeLength * 3, distToGoal + (span - halfSpan));
+            int high = Math.min(edgeLength * 3, distToGoal + (RANGE_SIZE - halfSpan));
 
             int[] rangeToGoal = new int[] { low, high };
 

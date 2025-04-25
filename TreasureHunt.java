@@ -164,19 +164,6 @@ public class TreasureHunt {
         return new TrialResult(found, steps);
     }
 
-    public void moveLeft()   { if (canMoveLeft())  { currentCoord.moveBy(-1, 0, 0); steps++; } }
-    public void moveRight()  { if (canMoveRight()) { currentCoord.moveBy( 1, 0, 0); steps++; } }
-    public void moveUp()     { if (canMoveUp())    { currentCoord.moveBy( 0, 1, 0); steps++; } }
-    public void moveDown()   { if (canMoveDown())  { currentCoord.moveBy( 0,-1, 0); steps++; } }
-    public void moveFront()  { if (canMoveFront()) { currentCoord.moveBy( 0, 0, 1); steps++; } }
-    public void moveBack()   { if (canMoveBack())  { currentCoord.moveBy( 0, 0,-1); steps++; } }
-
-    public boolean canMoveLeft()   { return currentCoord.x() > 0; }
-    public boolean canMoveRight()  { return currentCoord.x() < edgeLength - 1; }
-    public boolean canMoveUp()     { return currentCoord.y() < edgeLength - 1; }
-    public boolean canMoveDown()   { return currentCoord.y() > 0; }
-    public boolean canMoveFront()  { return currentCoord.z() < edgeLength - 1; }
-    public boolean canMoveBack()   { return currentCoord.z() > 0; }
 
     // ---------------------------
     // Internal logic
@@ -226,10 +213,9 @@ public class TreasureHunt {
             int distToPrev = current.manhattanTo(prev);
             int distToGoal = current.manhattanTo(goalCoord);
 
-            int span = RANGE_SIZE;
-            int halfSpan = rand.nextInt(span + 1);
+            int halfSpan = rand.nextInt(RANGE_SIZE + 1);
             int low = Math.max(0, distToGoal - halfSpan);
-            int high = Math.min(edgeLength * 3, distToGoal + (span - halfSpan));
+            int high = Math.min(edgeLength * 3, distToGoal + (RANGE_SIZE - halfSpan));
 
             int[] rangeToGoal = new int[] { low, high };
 

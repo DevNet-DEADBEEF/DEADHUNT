@@ -1,180 +1,134 @@
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicLong;
 
 class Playground {
-    private static final int[] firstn = new int[3];
-    private static final DebugRand rand = new DebugRand();
-    private static final AtomicLong seed = new AtomicLong(-1);
-    private static int[][] hints = new int[9][3];
-
-
     public static void main(String[] args) {
-        long now = System.nanoTime();
-        int bound = 20;
-        System.out.println("Generating...");
-        for (int i = 0; i < 3; i++)
-            firstn[i] = rand.nextInt(bound);
-        for (int i = 0; i < 9; i++) {
-            hints[i][0] = rand.nextInt(bound);
-            hints[i][1] = rand.nextInt(bound);
-            hints[i][2] = rand.nextInt(bound);
+        int trials = 100_000;
+
+        long sum = 0;
+        int failed = 0;
+
+        System.out.println("==== Balloon ====");
+        for (int i = 0; i < trials; i++) {
+            DeadHunt game = new DeadHunt(0);
+
+            DeadHunt.TrialResult res = balloon(game);
+
+            if (res != null) {
+                sum += res.steps;
+                if (i % 100 == 0)
+                    System.out.print("Trial " + i + ": " + res.steps + "         \r");
+            } else {
+                failed++;
+                System.out.println("Trial: " + trials + " failed: " + failed);
+            }
         }
-        System.out.println("First few: " + Arrays.toString(firstn));
+        double avg = (double) sum / trials;
+        if (failed > 0)
+            System.out.println("Failed runs: " + failed);
+        System.out.println("Avg steps: " + avg + " (" + (4000 - avg) + ")");
 
-        long initial = rand.getInitialSeed();
+        sum = 0;
+        failed = 0;
 
-        System.out.println("Performing sanity check...");
-        boolean failsafe = fastCheckSeed(initial, bound, true);
-        if (!failsafe) {
-            System.out.println("Failsafe failed");
-            return;
+        System.out.println("==== Dumb ====");
+        for (int i = 0; i < trials; i++) {
+            DeadHunt game = new DeadHunt(0);
+
+            DeadHunt.TrialResult res = dumb(game);
+
+            if (res != null) {
+                sum += res.steps;
+                if (i % 100 == 0)
+                    System.out.print("Trial " + i + ": " + res.steps + "         \r");
+            } else {
+                failed++;
+                System.out.println("Trial: " + trials + " failed: " + failed);
+            }
         }
-        long delta = (long) Math.pow(10, 15);
-        System.out.println(initial + " -> " + now);
-        checkN(now, delta * 10, bound);
-        System.out.println(seed.get());
-        System.out.println("Check " +
-                (fastCheckSeed(seed.get(), bound, false) ? "passed" : "failed")
-        );
-        long guess = seed.get();
+        avg = (double) sum / trials;
+        if (failed > 0)
+            System.out.println("Failed runs: " + failed);
+        System.out.println("Avg steps: " + avg + " (" + (4000 - avg) + ")");
 
-        Random gen = new Random();
-        gen.setSeed(guess ^ 3447679086515839964L);
-        System.out.println("First 3: " + Arrays.toString(firstn));
-        for (int i = 0; i < 3; i++)
-            System.out.print(gen.nextInt(bound) + ", ");
-        System.out.println();
+        sum = 0;
+        failed = 0;
 
-        // catch up to rand
-        for (int i = 0; i < 9; i++)
-            for (int j = 0; j < 3; j++)
-                gen.nextInt(bound);
+        System.out.println("==== Dumb Rand ====");
+        for (int i = 0; i < trials; i++) {
+            DeadHunt game = new DeadHunt(0);
 
-        for (int i = 0; i < 5; i++) {
-            System.out.printf(
-                    "%s==\n%s\n",
-                    gen.nextInt(bound), rand.nextInt(bound)
-            );
+            DeadHunt.TrialResult res = dumbRand(game);
+
+            if (res != null) {
+                sum += res.steps;
+                if (i % 100 == 0)
+                    System.out.print("Trial " + i + ": " + res.steps + "         \r");
+            } else {
+                failed++;
+                System.out.println("Trial: " + trials + " failed: " + failed);
+            }
         }
+        avg = (double) sum / trials;
+        if (failed > 0)
+            System.out.println("Failed runs: " + failed);
+        System.out.println("Avg steps: " + avg + " (" + (4000 - avg) + ")");
     }
 
+    public static DeadHunt.TrialResult balloon(DeadHunt game) {
+        CordsGen cg = new CordsGen(game.edgeLength);
 
-    /**
-     * Checks the next `next` seeds before `initial`
-     *
-     * @param initial Starting seed
-     * @param next    Lower bound of initial
-     * @param bound   Bound of generated ints
-     */
-    private static void checkN(long initial, long next, int bound) {
-        long test = initial;
-        long bottom = Math.max(
-                initial - next,
-                0
-        );
-        System.out.printf("Checking from %s to %s\n", test, bottom);
-        while (
-                test > bottom &&
-                !fastCheckSeed(test, bound, false) &&
-                seed.get() == -1
-        )
-            test--;
+        // Random start
+        int[] pos = cg.randCord();
+        int dist = 1;
+        DeadHunt.Collectible cl = null;
+        while (cl == null && dist <= game.edgeLength * 3) {
+            cg.addHint(pos, dist, new int[]{1, game.edgeLength});
 
-        // set the seed
-        if (fastCheckSeed(test, bound, false))
-            seed.set(test);
-        else
-            System.out.println("No seed found: " + test);
-    }
-
-    /**
-     * Checks if a seed produces the numbers in `first3`
-     *
-     * @param seed  The nanoTime seed
-     * @param bound upper bound of numbers
-     * @return Whether the seed is valid
-     */
-    private static boolean fastCheckSeed(long seed, int bound, boolean debug) {
-        // Causes long overflow
-        // seed ^ unique ^ multiplier & mask
-        long unique = (
-                (seed ^ 3447679086515839964L) ^ 0x5DEECE66DL)
-                & ((1L << 48) - 1);
-        if (debug)
-            System.out.printf(
-                    "[fcs] %s ^ qul ^ mul & mask = %s\n",
-                    seed, unique
-            );
-
-        // first int
-        unique = (unique * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
-        int first = ((int) (unique >>> (48 - 31))) % bound;
-        if (debug)
-            System.out.printf(
-                    "[fcs] %s %% %s = %s\n",
-                    (int) (unique >>> (48 - 31)), bound, first
-            );
-        if (first != firstn[0])
-            return false;
-
-        unique = (unique * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
-        int second = ((int) (unique >>> (48 - 31))) % bound;
-        if (debug)
-            System.out.printf(
-                    "[fcs] %s %% %s = %s\n",
-                    (int) (unique >>> (48 - 31)), bound, second
-            );
-        if (second != firstn[1])
-            return false;
-
-        unique = (unique * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
-        int third = ((int) (unique >>> (48 - 31))) % bound;
-        if (debug)
-            System.out.printf(
-                    "[fcs] %s %% %s = %s\n",
-                    (int) (unique >>> (48 - 31)), bound, third
-            );
-        if (third != firstn[2])
-            return false;
-
-        for (int i = 0; i < hints.length; i++) {
-            unique = (unique * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
-            int x = ((int) (unique >>> (48 - 31))) % bound;
-            if (debug)
-                System.out.printf(
-                        "[fcs] %s %% %s = %s\n",
-                        (int) (unique >>> (48 - 31)), bound, x
-                );
-
-            unique = (unique * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
-            int y = ((int) (unique >>> (48 - 31))) % bound;
-            if (debug)
-                System.out.printf(
-                        "[fcs] %s %% %s = %s\n",
-                        (int) (unique >>> (48 - 31)), bound, y
-                );
-
-            unique = (unique * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
-            int z = ((int) (unique >>> (48 - 31))) % bound;
-            if (debug)
-                System.out.printf(
-                        "[fcs] %s %% %s = %s\n",
-                        (int) (unique >>> (48 - 31)), bound, z
-                );
-
-            boolean match = false;
-            for (int[] cord : hints) {
-                if (cord[0] == x && cord[1] == y && cord[2] == z) {
-                    match = true;
-                    break;
+            while (cg.hasHint() && cl == null) {
+                int[] cur = cg.nextHint();
+                game.jumpTo(cur[0], cur[1], cur[2]);
+                cl = game.search();
+                if (cl == null)
+                    cg.remCord(cur);
+                else if (cl.isHint()) {
+                    cg.addHint(cur, (int) cl.getMessage()[0], (int[]) cl.getMessage()[1]);
+                } else {
+                    return game.submit();
                 }
             }
-            if (!match)
-                return false;
-        }
 
-        return true;
+            dist++;
+        }
+        return game.submit();
+    }
+
+    public static DeadHunt.TrialResult dumb(DeadHunt game) {
+        for (int x = 0; x < game.edgeLength; x++)
+            for (int y = 0; y < game.edgeLength; y++)
+                for (int z = 0; z < game.edgeLength; z++) {
+                    game.jumpTo(x, y, z);
+                    if (game.search() != null && !game.search().isHint())
+                        return game.submit();
+                }
+        return game.submit();
+    }
+
+    public static DeadHunt.TrialResult dumbRand(DeadHunt game) {
+        Random gen = new Random();
+        int xo = gen.nextInt(game.edgeLength);
+        int yo = gen.nextInt(game.edgeLength);
+        int zo = gen.nextInt(game.edgeLength);
+
+        for (int x = 0; x < game.edgeLength; x++)
+            for (int y = 0; y < game.edgeLength; y++)
+                for (int z = 0; z < game.edgeLength; z++) {
+                    int x1 = (x + xo >= game.edgeLength) ? x + xo - game.edgeLength : x + xo;
+                    int y1 = (y + yo >= game.edgeLength) ? y + yo - game.edgeLength : y + yo;
+                    int z1 = (z + zo >= game.edgeLength) ? z + zo - game.edgeLength : z + zo;
+                    game.jumpTo(x1, y1, z1);
+                    if (game.search() != null && !game.search().isHint())
+                        return game.submit();
+                }
+        return game.submit();
     }
 }
