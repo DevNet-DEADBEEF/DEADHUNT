@@ -1,4 +1,5 @@
 public class StudentAgent {
+    public static int steps2hint = 0;
     public static TreasureHunt.TrialResult run(TreasureHunt game) {
         int edgeLength = game.edgeLength;
         CordsGen cg = new CordsGen(edgeLength);
@@ -26,13 +27,12 @@ public class StudentAgent {
 
             dist++;
         }
+        steps2hint = game.submit().steps;
 
         while (cg.numGoals() > cg.numHints() && res == null) {
             int[] cur = cg.nextHint();
-            if (cur == null) {
-                System.out.println("Out of hints!");
+            if (cur == null)
                 break;
-            }
             game.jumpTo(cur[0], cur[1], cur[2]);
             cl = game.search();
             if (cl == null)

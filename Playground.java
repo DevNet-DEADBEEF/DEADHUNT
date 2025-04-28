@@ -30,6 +30,29 @@ class Playground {
         sum = 0;
         failed = 0;
 
+        System.out.println("==== Ballon Inverse ====");
+        for (int i = 0; i < trials; i++) {
+            DeadHunt game = new DeadHunt(0);
+
+            DeadHunt.TrialResult res = balloonInverse(game);
+
+            if (res != null) {
+                sum += res.steps;
+                if (i % 100 == 0)
+                    System.out.print("Trial " + i + ": " + res.steps + "         \r");
+            } else {
+                failed++;
+                System.out.println("Trial: " + trials + " failed: " + failed);
+            }
+        }
+        avg = (double) sum / trials;
+        if (failed > 0)
+            System.out.println("Failed runs: " + failed);
+        System.out.println("Avg steps: " + avg + " (" + (4000 - avg) + ")");
+
+        sum = 0;
+        failed = 0;
+
         System.out.println("==== Dumb ====");
         for (int i = 0; i < trials; i++) {
             DeadHunt game = new DeadHunt(0);
@@ -58,6 +81,29 @@ class Playground {
             DeadHunt game = new DeadHunt(0);
 
             DeadHunt.TrialResult res = dumbRand(game);
+
+            if (res != null) {
+                sum += res.steps;
+                if (i % 100 == 0)
+                    System.out.print("Trial " + i + ": " + res.steps + "         \r");
+            } else {
+                failed++;
+                System.out.println("Trial: " + trials + " failed: " + failed);
+            }
+        }
+        avg = (double) sum / trials;
+        if (failed > 0)
+            System.out.println("Failed runs: " + failed);
+        System.out.println("Avg steps: " + avg + " (" + (4000 - avg) + ")");
+
+        sum = 0;
+        failed = 0;
+
+        System.out.println("==== Rand Sample ====");
+        for (int i = 0; i < trials; i++) {
+            DeadHunt game = new DeadHunt(0);
+
+            DeadHunt.TrialResult res = randSample(game);
 
             if (res != null) {
                 sum += res.steps;
@@ -102,6 +148,34 @@ class Playground {
         return game.submit();
     }
 
+    public static DeadHunt.TrialResult balloonInverse(DeadHunt game) {
+        CordsGen cg = new CordsGen(game.edgeLength);
+
+        // Random start
+        int[] pos = cg.randCord();
+        int dist = game.edgeLength * 3;
+        DeadHunt.Collectible cl = null;
+        while (cl == null && dist >= 1) {
+            cg.addHint(pos, dist, new int[]{1, game.edgeLength});
+
+            while (cg.hasHint() && cl == null) {
+                int[] cur = cg.nextHint();
+                game.jumpTo(cur[0], cur[1], cur[2]);
+                cl = game.search();
+                if (cl == null)
+                    cg.remCord(cur);
+                else if (cl.isHint()) {
+                    cg.addHint(cur, (int) cl.getMessage()[0], (int[]) cl.getMessage()[1]);
+                } else {
+                    return game.submit();
+                }
+            }
+
+            dist--;
+        }
+        return game.submit();
+    }
+
     public static DeadHunt.TrialResult dumb(DeadHunt game) {
         for (int x = 0; x < game.edgeLength; x++)
             for (int y = 0; y < game.edgeLength; y++)
@@ -129,6 +203,20 @@ class Playground {
                     if (game.search() != null && !game.search().isHint())
                         return game.submit();
                 }
+        return game.submit();
+    }
+
+    public static DeadHunt.TrialResult randSample(DeadHunt game) {
+        CordsGen cg = new CordsGen(game.edgeLength);
+
+        while (cg.numVisited() <= 8000) {
+            int[] pos = cg.randCord();
+            game.jumpTo(pos[0], pos[1], pos[2]);
+
+            if (game.search() != null && !game.search().isHint())
+                return game.submit();
+            cg.remCord(pos);
+        }
         return game.submit();
     }
 }

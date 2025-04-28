@@ -1,9 +1,9 @@
 import java.util.*;
 
 public class CordsGen {
-    private final Queue<int[]> hints = new LinkedList<>();
-    private final Queue<int[]> goals = new LinkedList<>();
-    private final HashSet<int[]> visited = new HashSet<>();
+    private final Queue<Integer> hints = new LinkedList<>();
+    private final Queue<Integer> goals = new LinkedList<>();
+    private final HashSet<Integer> visited = new HashSet<>();
     private final Random random = new Random();
     private final int edge;
 
@@ -23,8 +23,9 @@ public class CordsGen {
             for (int y = Math.max(0, pos[1] - dist); y < Math.min(edge, pos[1] + dist); y++)
                 for (int z = Math.max(0, pos[2] - dist); z < Math.min(edge, pos[2] + dist); z++) {
                     int[] other = new int[] {x, y, z};
-                    if (!visited.contains(other) && Ndist(pos, other) == dist)
-                        hints.add(other);
+                    int iother = intify(other);
+                    if (!visited.contains(iother) && Ndist(pos, other) == dist)
+                        hints.add(iother);
                 }
 
         if (goals.isEmpty())
@@ -32,17 +33,18 @@ public class CordsGen {
                 for (int y = Math.max(0, pos[1] - ghigh); y < Math.min(edge, pos[1] + ghigh); y++)
                     for (int z = Math.max(0, pos[2] - ghigh); z < Math.min(edge, pos[2] + ghigh); z++) {
                         int[] other = new int[]{x, y, z};
-                        if (visited.contains(other))
+                        int iother = intify(other);
+                        if (visited.contains(iother))
                             continue;
                         int dist2 = Ndist(pos, other);
                         if (dist2 <= ghigh && dist2 >= glow)
-                            goals.add(other);
+                            goals.add(iother);
                     }
         else
             goals.removeIf(
                     other ->
-                            Ndist(pos, other) < glow ||
-                            Ndist(pos, other) > ghigh ||
+                            Ndist(pos, deintify(other)) < glow ||
+                            Ndist(pos, deintify(other)) > ghigh ||
                             visited.contains(other)
             );
     }
@@ -63,10 +65,24 @@ public class CordsGen {
         return hints.size();
     }
 
+    public int numVisited() { return visited.size(); }
+
     public void remCord(int[] pos) {
-        visited.add(pos);
-        hints.remove(pos);
-        goals.remove(pos);
+        int cord = intify(pos);
+        visited.add(cord);
+        hints.remove(cord);
+        goals.remove(cord);
+        failsafe();
+    }
+
+    public void failsafe() {
+        if (hints.size() > 8000 || goals.size() > 8000 || visited.size() > 8000) {
+            System.err.println("Something went wrong:");
+            System.err.println("Hints: " + hints.size());
+            System.err.println("Goals: " + goals.size());
+            System.err.println("Visited: " + visited.size());
+            System.exit(1);
+        }
     }
 
     public int[] randCord() {
@@ -77,12 +93,23 @@ public class CordsGen {
         };
     }
 
-    public int[] nextHint() {
-        return hints.poll();
-    }
+    public int[] nextHint() { return deintify(hints.poll()); }
     public boolean hasHint() { return !hints.isEmpty(); }
 
-    public int[] nextGoal() {
-        return goals.poll();
+    public int[] nextGoal() { return deintify(goals.poll()); }
+
+    public int intify(int[] pos) {
+        // x y z
+        // x * 10^2 + y * 10 + z
+        return pos[0] * 10_000 + pos[1] * 100 + pos[2];
+    }
+
+    public int[] deintify(Integer pos) {
+        if (pos == null)
+            return null;
+        int z = pos % 100;
+        int y = (pos / 100) % 100;
+        int x = (pos / 10_000) % 100;
+        return new int[]{x, y, z};
     }
 }
