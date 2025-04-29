@@ -8,7 +8,6 @@ public class StudentAgentRand {
     private static final long initTime = System.nanoTime();
     private static final int[][] hints = new int[9][3];
     private static DeadHunt dh;
-    private static CordsGen cg = new CordsGen(20);
 
     public static TreasureHunt.TrialResult run(TreasureHunt game) {
         // Your agent's logic here, using game.jumpTo, move..., search, etc.

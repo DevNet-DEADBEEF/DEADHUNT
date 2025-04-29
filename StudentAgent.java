@@ -1,39 +1,26 @@
 public class StudentAgent {
-    public static int steps2hint = 0;
+    public static int maxSteps = 8000;
+    private static int steps = 0;
+
     public static TreasureHunt.TrialResult run(TreasureHunt game) {
-        int edgeLength = game.edgeLength;
-        CordsGen cg = new CordsGen(edgeLength);
-        // Random start
-        int[] pos = cg.randCord();
-        int dist = 1;
-        TreasureHunt.Collectible cl = null;
+        CordsGen cg = new CordsGen(game);
+        steps = 0;
+        TreasureHunt.Collectible cl;
         TreasureHunt.TrialResult res = null;
 
-        while (cl == null && dist <= 60) {
-            cg.addHint(pos, dist, new int[]{1, 60});
+        // Find the first hint
+        cg.firstHint();
 
-            while (cg.hasHint() && cl == null) {
-                int[] cur = cg.nextHint();
-                game.jumpTo(cur[0], cur[1], cur[2]);
-                cl = game.search();
-                if (cl == null)
-                    cg.remCord(cur);
-                else if (cl.isHint()) {
-                    cg.addHint(cur, (int) cl.getMessage()[0], (int[]) cl.getMessage()[1]);
-                } else {
-                    res = game.submit();
-                }
-            }
-
-            dist++;
-        }
-        steps2hint = game.submit().steps;
-
-        while (cg.numGoals() > cg.numHints() && res == null) {
+        // Find hints until we have narrowed the goal
+        while (
+                cg.numGoals() > cg.numHints() &&
+                res == null &&
+                remSteps() > cg.numGoals()
+        ) {
             int[] cur = cg.nextHint();
             if (cur == null)
                 break;
-            game.jumpTo(cur[0], cur[1], cur[2]);
+            jump(game, cur);
             cl = game.search();
             if (cl == null)
                 cg.remCord(cur);
@@ -44,20 +31,34 @@ public class StudentAgent {
             }
         }
 
+        // Brute force the goal
         while (res == null) {
             int[] cur = cg.nextGoal();
-            if (cur == null)
+
+            if (cur == null) // out of goals
                 res = game.submit();
             else {
-                game.jumpTo(cur[0], cur[1], cur[2]);
+                jump(game, cur);
                 cl = game.search();
-                if (cl != null && !cl.isHint()) {
+
+                if (isGoal(cl)) { // is goal
                     res = game.submit();
-                } else if (cl != null && cl.isHint()) {
+                } else if (isHint(cl)) { // is hinted
                     cg.addHint(cur, (int) cl.getMessage()[0], (int[]) cl.getMessage()[1]);
                 }
             }
         }
         return game.submit();
     }
+
+    private static boolean nbail() { return steps < maxSteps; }
+    public static int remSteps() { return maxSteps - steps; }
+
+    public static void jump(TreasureHunt game, int[] pos) {
+        game.jumpTo(pos[0], pos[1], pos[2]);
+        steps++;
+    }
+
+    public static boolean isGoal(TreasureHunt.Collectible c) { return c != null && !c.isHint(); }
+    public static boolean isHint(TreasureHunt.Collectible c) { return c != null && c.isHint(); }
 }

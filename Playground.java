@@ -1,222 +1,56 @@
-import java.util.Random;
-
 class Playground {
     public static void main(String[] args) {
-        int trials = 100_000;
+        double bestScore = 0;
+        boolean opt = false;
 
-        long sum = 0;
-        int failed = 0;
+        boolean[] ab = new boolean[]{true, false};
 
-        System.out.println("==== Balloon ====");
-        for (int i = 0; i < trials; i++) {
-            DeadHunt game = new DeadHunt(0);
+        for (boolean test : ab) {
+            int trials = 10_000;
+            int totalSteps = 0;
+            int maxSteps = Integer.MIN_VALUE;
+            int successCount = 0;
 
-            DeadHunt.TrialResult res = balloon(game);
+            for (int i = 0; i < trials; i++) {
+                TreasureHunt game = new TreasureHunt();
+                CordsGen.ab = test;
+                TreasureHunt.TrialResult result = StudentAgent.run(game);
 
-            if (res != null) {
-                sum += res.steps;
-                if (i % 100 == 0)
-                    System.out.print("Trial " + i + ": " + res.steps + "         \r");
-            } else {
-                failed++;
-                System.out.println("Trial: " + trials + " failed: " + failed);
-            }
-        }
-        double avg = (double) sum / trials;
-        if (failed > 0)
-            System.out.println("Failed runs: " + failed);
-        System.out.println("Avg steps: " + avg + " (" + (4000 - avg) + ")");
-
-        sum = 0;
-        failed = 0;
-
-        System.out.println("==== Ballon Inverse ====");
-        for (int i = 0; i < trials; i++) {
-            DeadHunt game = new DeadHunt(0);
-
-            DeadHunt.TrialResult res = balloonInverse(game);
-
-            if (res != null) {
-                sum += res.steps;
-                if (i % 100 == 0)
-                    System.out.print("Trial " + i + ": " + res.steps + "         \r");
-            } else {
-                failed++;
-                System.out.println("Trial: " + trials + " failed: " + failed);
-            }
-        }
-        avg = (double) sum / trials;
-        if (failed > 0)
-            System.out.println("Failed runs: " + failed);
-        System.out.println("Avg steps: " + avg + " (" + (4000 - avg) + ")");
-
-        sum = 0;
-        failed = 0;
-
-        System.out.println("==== Dumb ====");
-        for (int i = 0; i < trials; i++) {
-            DeadHunt game = new DeadHunt(0);
-
-            DeadHunt.TrialResult res = dumb(game);
-
-            if (res != null) {
-                sum += res.steps;
-                if (i % 100 == 0)
-                    System.out.print("Trial " + i + ": " + res.steps + "         \r");
-            } else {
-                failed++;
-                System.out.println("Trial: " + trials + " failed: " + failed);
-            }
-        }
-        avg = (double) sum / trials;
-        if (failed > 0)
-            System.out.println("Failed runs: " + failed);
-        System.out.println("Avg steps: " + avg + " (" + (4000 - avg) + ")");
-
-        sum = 0;
-        failed = 0;
-
-        System.out.println("==== Dumb Rand ====");
-        for (int i = 0; i < trials; i++) {
-            DeadHunt game = new DeadHunt(0);
-
-            DeadHunt.TrialResult res = dumbRand(game);
-
-            if (res != null) {
-                sum += res.steps;
-                if (i % 100 == 0)
-                    System.out.print("Trial " + i + ": " + res.steps + "         \r");
-            } else {
-                failed++;
-                System.out.println("Trial: " + trials + " failed: " + failed);
-            }
-        }
-        avg = (double) sum / trials;
-        if (failed > 0)
-            System.out.println("Failed runs: " + failed);
-        System.out.println("Avg steps: " + avg + " (" + (4000 - avg) + ")");
-
-        sum = 0;
-        failed = 0;
-
-        System.out.println("==== Rand Sample ====");
-        for (int i = 0; i < trials; i++) {
-            DeadHunt game = new DeadHunt(0);
-
-            DeadHunt.TrialResult res = randSample(game);
-
-            if (res != null) {
-                sum += res.steps;
-                if (i % 100 == 0)
-                    System.out.print("Trial " + i + ": " + res.steps + "         \r");
-            } else {
-                failed++;
-                System.out.println("Trial: " + trials + " failed: " + failed);
-            }
-        }
-        avg = (double) sum / trials;
-        if (failed > 0)
-            System.out.println("Failed runs: " + failed);
-        System.out.println("Avg steps: " + avg + " (" + (4000 - avg) + ")");
-    }
-
-    public static DeadHunt.TrialResult balloon(DeadHunt game) {
-        CordsGen cg = new CordsGen(game.edgeLength);
-
-        // Random start
-        int[] pos = cg.randCord();
-        int dist = 1;
-        DeadHunt.Collectible cl = null;
-        while (cl == null && dist <= game.edgeLength * 3) {
-            cg.addHint(pos, dist, new int[]{1, game.edgeLength});
-
-            while (cg.hasHint() && cl == null) {
-                int[] cur = cg.nextHint();
-                game.jumpTo(cur[0], cur[1], cur[2]);
-                cl = game.search();
-                if (cl == null)
-                    cg.remCord(cur);
-                else if (cl.isHint()) {
-                    cg.addHint(cur, (int) cl.getMessage()[0], (int[]) cl.getMessage()[1]);
-                } else {
-                    return game.submit();
+                if (result.foundGoal) {
+                    totalSteps += result.steps;
+                    successCount++;
+                    if (result.steps > maxSteps)
+                        maxSteps = result.steps;
                 }
+
+                if (i % 100 == 0)
+                    System.out.print(
+                            "Trial " + i +
+                            ": " + (result.foundGoal ? "X" : "O") +
+                            ", S=" + result.steps +
+                            "<" + maxSteps +
+                            " ~: " + ((int) (((double) successCount / i) * 100_000.0d / totalSteps * i)) +
+                            "            \r"
+                    );
             }
 
-            dist++;
-        }
-        return game.submit();
-    }
+            double successRate = (double) successCount / trials;
+            System.out.println("Max Steps: " + maxSteps + "                 ");
+            System.out.println("Successes: " + successCount + "/" + trials + " (" + ((int) (successRate * 100)) + "%)");
+            System.out.println("Average steps: " + (successCount > 0 ? ((double) totalSteps / successCount) : "N/A"));
 
-    public static DeadHunt.TrialResult balloonInverse(DeadHunt game) {
-        CordsGen cg = new CordsGen(game.edgeLength);
+            double avgSteps = (successCount > 0) ? ((double) totalSteps / successCount) : Double.MAX_VALUE;
+            double score = (successRate * 100_000.0) / (avgSteps + 1);
 
-        // Random start
-        int[] pos = cg.randCord();
-        int dist = game.edgeLength * 3;
-        DeadHunt.Collectible cl = null;
-        while (cl == null && dist >= 1) {
-            cg.addHint(pos, dist, new int[]{1, game.edgeLength});
+            System.out.printf("Score: %.3f!\n\n", score);
 
-            while (cg.hasHint() && cl == null) {
-                int[] cur = cg.nextHint();
-                game.jumpTo(cur[0], cur[1], cur[2]);
-                cl = game.search();
-                if (cl == null)
-                    cg.remCord(cur);
-                else if (cl.isHint()) {
-                    cg.addHint(cur, (int) cl.getMessage()[0], (int[]) cl.getMessage()[1]);
-                } else {
-                    return game.submit();
-                }
+            if (score > bestScore) {
+                bestScore = score;
+                opt = test;
             }
-
-            dist--;
         }
-        return game.submit();
-    }
 
-    public static DeadHunt.TrialResult dumb(DeadHunt game) {
-        for (int x = 0; x < game.edgeLength; x++)
-            for (int y = 0; y < game.edgeLength; y++)
-                for (int z = 0; z < game.edgeLength; z++) {
-                    game.jumpTo(x, y, z);
-                    if (game.search() != null && !game.search().isHint())
-                        return game.submit();
-                }
-        return game.submit();
-    }
-
-    public static DeadHunt.TrialResult dumbRand(DeadHunt game) {
-        Random gen = new Random();
-        int xo = gen.nextInt(game.edgeLength);
-        int yo = gen.nextInt(game.edgeLength);
-        int zo = gen.nextInt(game.edgeLength);
-
-        for (int x = 0; x < game.edgeLength; x++)
-            for (int y = 0; y < game.edgeLength; y++)
-                for (int z = 0; z < game.edgeLength; z++) {
-                    int x1 = (x + xo >= game.edgeLength) ? x + xo - game.edgeLength : x + xo;
-                    int y1 = (y + yo >= game.edgeLength) ? y + yo - game.edgeLength : y + yo;
-                    int z1 = (z + zo >= game.edgeLength) ? z + zo - game.edgeLength : z + zo;
-                    game.jumpTo(x1, y1, z1);
-                    if (game.search() != null && !game.search().isHint())
-                        return game.submit();
-                }
-        return game.submit();
-    }
-
-    public static DeadHunt.TrialResult randSample(DeadHunt game) {
-        CordsGen cg = new CordsGen(game.edgeLength);
-
-        while (cg.numVisited() <= 8000) {
-            int[] pos = cg.randCord();
-            game.jumpTo(pos[0], pos[1], pos[2]);
-
-            if (game.search() != null && !game.search().isHint())
-                return game.submit();
-            cg.remCord(pos);
-        }
-        return game.submit();
+        System.out.println("\nBest score: " + bestScore);
+        System.out.println("Best option: " + opt);
     }
 }
